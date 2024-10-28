@@ -11,3 +11,9 @@ class SignUpModel(BaseModel):
 class ConfirmSignUpModel(BaseModel):
     username: str
     confirmation_code: str
+
+class TokenPayload(BaseModel):
+    sub: str
+
+class User(BaseModel):
+    user_id: str
