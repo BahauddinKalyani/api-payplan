@@ -8,24 +8,24 @@ from models.transactions import IncomeTransaction, ExpenseTransaction, Transacti
 from services.transactions_service import TransactionService
 from utils.transactions import get_transaction_service
 
-router = APIRouter()
+auth_router = APIRouter()
 
-@router.post("/signup")
+@auth_router.post("/signup")
 async def signup(user: SignUpModel):
     return await CognitoService.sign_up(user)
 
-@router.post("/confirm-signup")
+@auth_router.post("/confirm-signup")
 async def confirm_signup(confirm: ConfirmSignUpModel):
     return await CognitoService.confirm_sign_up(confirm)
 
-@router.post("/login")
+@auth_router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     return await CognitoService.login(form_data.username, form_data.password)
 
-@router.post("/logout")
+@auth_router.post("/logout")
 async def logout(token: str):
     return await CognitoService.logout(token)
 
-@router.get("/users/me")
+@auth_router.get("/users/me")
 async def read_users_me(token: str):
     return await CognitoService.get_current_user_id(token)

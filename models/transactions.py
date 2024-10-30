@@ -19,7 +19,7 @@ class Transaction(BaseModel):
     type: TransactionType
     name: str
     amount: int
-    frequency: Frequency
+    frequency: Optional[Frequency] = None
     start_date: str
     end_date: Optional[str] = None
     due_date: Optional[str] = None
@@ -30,5 +30,5 @@ class IncomeTransaction(Transaction):
 
 class ExpenseTransaction(Transaction):
     type: TransactionType = TransactionType.EXPENSE
-    due_date: date
+    due_date: str
     auto_deduct: bool
