@@ -34,7 +34,7 @@ class CognitoService:
     def email_exists(email):
         try:
             response = cognito_client.list_users(
-                UserPoolId=settings.AWS_COGNITO_USER_POOL_ID,
+                UserPoolId=settings.PAYPLAN_AWS_COGNITO_USER_POOL_ID,
                 Filter=f'email = "{email}"'
             )
             return len(response['Users']) > 0
@@ -49,7 +49,7 @@ class CognitoService:
             raise HTTPException(status_code=409, detail="Email already exists.")
         try:
             response = cognito_client.sign_up(
-                ClientId=settings.AWS_COGNITO_CLIENT_ID,
+                ClientId=settings.PAYPLAN_AWS_COGNITO_CLIENT_ID,
                 Username=user.username,
                 Password=user.password,
                 UserAttributes=[
@@ -79,7 +79,7 @@ class CognitoService:
     async def confirm_sign_up(confirm):
         try:
             cognito_client.confirm_sign_up(
-                ClientId=settings.AWS_COGNITO_CLIENT_ID,
+                ClientId=settings.PAYPLAN_AWS_COGNITO_CLIENT_ID,
                 Username=confirm.username,
                 ConfirmationCode=confirm.confirmation_code
             )
@@ -102,7 +102,7 @@ class CognitoService:
     async def login(username, password):
         try:
             response = cognito_client.initiate_auth(
-                ClientId=settings.AWS_COGNITO_CLIENT_ID,
+                ClientId=settings.PAYPLAN_AWS_COGNITO_CLIENT_ID,
                 AuthFlow='USER_PASSWORD_AUTH',
                 AuthParameters={
                     'USERNAME': username,
@@ -161,7 +161,7 @@ class CognitoService:
                 token,
                 public_key.to_pem(),
                 # algorithms=['RS256'],
-                # audience=settings.AWS_COGNITO_CLIENT_ID,
+                # audience=settings.PAYPLAN_AWS_COGNITO_CLIENT_ID,
                 # issuer=settings.KEYS_URL,
                 options={'verify_exp': False, "verify_signature": False}
             )
