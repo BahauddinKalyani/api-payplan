@@ -3,11 +3,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 from models.auth import SignUpModel, ConfirmSignUpModel
 from services.cognito_service import CognitoService
 
-from typing import List, Optional
-from models.transactions import IncomeTransaction, ExpenseTransaction, Transaction, TransactionType
-from services.transactions_service import TransactionService
-from utils.transactions import get_transaction_service
-
 auth_router = APIRouter()
 
 @auth_router.post("/signup")

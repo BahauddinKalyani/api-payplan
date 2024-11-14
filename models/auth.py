@@ -1,12 +1,13 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class SignUpModel(BaseModel):
-    first_name: str
-    middle_name: str
-    last_name: str
+    given_name: Optional[str] = None
+    family_name: Optional[str] = None
     username: str
     email: str
     password: str
+    balance: Optional[int] = None
 
 class ConfirmSignUpModel(BaseModel):
     username: str
@@ -16,4 +17,10 @@ class TokenPayload(BaseModel):
     sub: str
 
 class User(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None
+    given_name: Optional[str] = None
+    family_name: Optional[str] = None
+    username: str
+    email: str
+    password: str
+    balance: Optional[int] = None
