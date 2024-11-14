@@ -5,10 +5,10 @@ import requests
 
 def get_transaction_service():
     return TransactionService(
-        region_name=settings.AWS_REGION,
-        aws_access_key_id=dbconf.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=dbconf.AWS_SECRET_ACCESS_KEY,
-        table_name=dbconf.Transaction_Table_Name
+        region_name=settings.PAYPLAN_AWS_REGION,
+        aws_access_key_id=dbconf.PAYPLAN_AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=dbconf.PAYPLAN_AWS_SECRET_ACCESS_KEY,
+        table_name=dbconf.PAYPLAN_TRANSACTION_TABLE_NAME
     )
     
 def get_jwks(user_pool_id):

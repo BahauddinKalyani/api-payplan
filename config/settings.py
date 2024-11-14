@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Settings(BaseSettings):
-    AWS_REGION: str
-    AWS_COGNITO_USER_POOL_ID: str
-    AWS_COGNITO_CLIENT_ID: str
+    PAYPLAN_AWS_REGION: str
+    PAYPLAN_AWS_COGNITO_USER_POOL_ID: str
+    PAYPLAN_AWS_COGNITO_CLIENT_ID: str
     JWKS_CACHE_TIMEOUT: int = 3600
     
     @property
@@ -16,8 +16,8 @@ class Settings(BaseSettings):
 settings = Settings()
 
 class DBConf(BaseSettings):
-    AWS_ACCESS_KEY_ID: str
-    AWS_SECRET_ACCESS_KEY: str
-    Transaction_Table_Name: str
+    PAYPLAN_AWS_ACCESS_KEY_ID: str
+    PAYPLAN_AWS_SECRET_ACCESS_KEY: str
+    PAYPLAN_TRANSACTION_TABLE_NAME: str
     
 dbconf = DBConf()
