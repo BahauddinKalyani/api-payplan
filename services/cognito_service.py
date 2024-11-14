@@ -19,7 +19,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-cognito_client = boto3.client('cognito-idp', region_name=settings.AWS_REGION)
+cognito_client = boto3.client('cognito-idp', region_name=settings.PAYPLAN_AWS_REGION)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # jwks_cache = {}
