@@ -160,9 +160,6 @@ class CognitoService:
             payload = jwt.decode(
                 token,
                 public_key.to_pem(),
-                # algorithms=['RS256'],
-                # audience=settings.PAYPLAN_AWS_COGNITO_CLIENT_ID,
-                # issuer=settings.KEYS_URL,
                 options={'verify_exp': False, "verify_signature": False}
             )
             return TokenPayload(**payload)
