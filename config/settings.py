@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     
     @property
     def KEYS_URL(self):
-        return f'https://cognito-idp.{self.AWS_REGION}.amazonaws.com/{self.AWS_COGNITO_USER_POOL_ID}/.well-known/jwks.json'
+        return f'https://cognito-idp.{self.PAYPLAN_AWS_REGION}.amazonaws.com/{self.AWS_COGNITO_USER_POOL_ID}/.well-known/jwks.json'
 
 settings = Settings()
 
