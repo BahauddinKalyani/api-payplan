@@ -32,7 +32,7 @@ async def delete_transaction(transaction_id: str):
     transaction_service.delete_transaction(transaction_id)
     return {"message": "Transaction deleted successfully"}
 
-@t_router.get("/users/{user_id}/transactions/", response_model=list[Transaction])
+@t_router.get("/users/{user_id}/transactions", response_model=list[Transaction])
 async def get_user_transactions(user_id: str):
     return transaction_service.list_user_transactions(user_id)
 

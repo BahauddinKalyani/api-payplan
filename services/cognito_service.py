@@ -19,7 +19,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-cognito_client = boto3.client('cognito-idp', region_name=settings.PAYPLAN_AWS_REGION)
+cognito_client = boto3.client('cognito-idp', region_name=settings.AWS_REGION)
+boto3.set_stream_logger('botocore', level='DEBUG')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # jwks_cache = {}
@@ -31,10 +32,10 @@ class CognitoService:
     jwks_cache_timestamp = 0
 
     @staticmethod
-    def email_exists(email):
+    def email_exists(cognito_client, email):
         try:
             response = cognito_client.list_users(
-                UserPoolId=settings.PAYPLAN_AWS_COGNITO_USER_POOL_ID,
+                UserPoolId=settings.AWS_COGNITO_USER_POOL_ID,
                 Filter=f'email = "{email}"'
             )
             return len(response['Users']) > 0
@@ -45,11 +46,11 @@ class CognitoService:
     @staticmethod
     async def sign_up(user):
         
-        if CognitoService.email_exists(user.email):
+        if CognitoService.email_exists(cognito_client, user.email):
             raise HTTPException(status_code=409, detail="Email already exists.")
         try:
             response = cognito_client.sign_up(
-                ClientId=settings.PAYPLAN_AWS_COGNITO_CLIENT_ID,
+                ClientId=settings.AWS_COGNITO_CLIENT_ID,
                 Username=user.username,
                 Password=user.password,
                 UserAttributes=[
@@ -79,7 +80,7 @@ class CognitoService:
     async def confirm_sign_up(confirm):
         try:
             cognito_client.confirm_sign_up(
-                ClientId=settings.PAYPLAN_AWS_COGNITO_CLIENT_ID,
+                ClientId=settings.AWS_COGNITO_CLIENT_ID,
                 Username=confirm.username,
                 ConfirmationCode=confirm.confirmation_code
             )
@@ -102,7 +103,7 @@ class CognitoService:
     async def login(username, password):
         try:
             response = cognito_client.initiate_auth(
-                ClientId=settings.PAYPLAN_AWS_COGNITO_CLIENT_ID,
+                ClientId=settings.AWS_COGNITO_CLIENT_ID,
                 AuthFlow='USER_PASSWORD_AUTH',
                 AuthParameters={
                     'USERNAME': username,
