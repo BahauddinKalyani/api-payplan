@@ -25,6 +25,7 @@ class TransactionBase(BaseModel):
     day: Optional[int] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    skip_end_date: Optional[bool] = False
 
 class TransactionCreate(TransactionBase):
     pass
