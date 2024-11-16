@@ -9,7 +9,7 @@ t_router = APIRouter(
 )
 transaction_service = get_transaction_service()
 
-@t_router.post("/transactions/", response_model=Transaction)
+@t_router.post("/transactions", response_model=Transaction)
 async def create_transaction(transaction: TransactionCreate, user_id: str = Depends(CognitoService.get_current_user_id)):
     return transaction_service.create_transaction(transaction, user_id)
 
