@@ -197,7 +197,10 @@ class MainService:
             #     continue
             
             start_date = self.parse_date(transaction.start_date)
-            end_date = self.parse_date(transaction.end_date)
+            if(transaction.skip_end_date):
+                end_date = self.parse_date(end_window.strftime("%m-%d-%Y"))
+            else:
+                end_date = self.parse_date(transaction.end_date)
             
             # Check if the transaction falls within the specified date range
             if not self.is_within_date_range(start_date, end_date, start_window, end_window):
