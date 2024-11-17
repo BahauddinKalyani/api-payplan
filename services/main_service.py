@@ -189,6 +189,8 @@ class MainService:
         today = datetime.now()
         start_window = today - timedelta(days=30)
         end_window = today + timedelta(days=210)
+        start_window = self.parse_date(start_window.strftime("%m-%d-%Y"))
+        end_window = self.parse_date(end_window.strftime("%m-%d-%Y"))
         logger.info(f"Start window: {start_window}, End window: {end_window}")
         transaction_dates = {}
 
@@ -213,11 +215,24 @@ class MainService:
                     recurring_transactions[trans_date].append(transaction)
 
             elif transaction.frequency in ['weekly', 'bi-weekly']:
+                # trans_date = self.parse_date(transaction.start_date)
+                # interval_days = 7 if transaction.frequency == 'weekly' else 14
+                # if trans_date.weekday() != transaction.day - 1:
+                #     days_ahead = (transaction.day - 1 - trans_date.weekday()) % 7
+                    
+                #     trans_date += timedelta(days=days_ahead)
                 trans_date = self.parse_date(transaction.start_date)
                 interval_days = 7 if transaction.frequency == 'weekly' else 14
-                if trans_date.weekday() != transaction.day - 1:
-                    days_ahead = (transaction.day - 1 - trans_date.weekday()) % 7
-                    trans_date += timedelta(days=days_ahead)
+                target_weekday = transaction.day - 1  # Adjust for 0-indexed weekday
+
+                if trans_date.weekday() != target_weekday:
+                    days_diff = (target_weekday - trans_date.weekday()) % 7
+                    
+                    # If the difference is more than 3 days, subtract instead of add
+                    if days_diff > 3:
+                        days_diff -= 7
+                    
+                    trans_date += timedelta(days=days_diff)
                     
                 # Generate dates for weekly or bi-weekly transactions
                 while trans_date <= end_window:
