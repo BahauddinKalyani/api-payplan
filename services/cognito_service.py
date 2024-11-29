@@ -1,21 +1,15 @@
+"""CognitoService class which provides methods to interact with AWS Cognito."""
+import logging
 import time
-from typing import Dict
 import httpx
 import boto3
-from fastapi import HTTPException, status, Depends
-from config.settings import settings
-from jose import jwt, JWTError, jwk
-from config.settings import settings
-from models.auth import TokenPayload
-from fastapi.security import OAuth2PasswordBearer
-from models.auth import User
 from botocore.exceptions import ClientError
-
-from utils.transactions import get_jwks
-
-from jose import jwt
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import logging
+from jose import jwt, JWTError, jwk
+from fastapi import HTTPException, status, Depends
+from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordBearer
+from models.auth import TokenPayload
+from config.settings import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -23,16 +17,14 @@ cognito_client = boto3.client('cognito-idp', region_name=settings.AWS_REGION)
 boto3.set_stream_logger('botocore', level='DEBUG')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# jwks_cache = {}
-# jwks_cache_timestamp = 0
-
 class CognitoService:
-    
+    """Service class to interact with AWS Cognito."""
     jwks_cache = {}
     jwks_cache_timestamp = 0
 
     @staticmethod
-    def email_exists(cognito_client, email):
+    def email_exists(email):
+        """Check if an email exists in the Cognito user pool"""
         try:
             response = cognito_client.list_users(
                 UserPoolId=settings.AWS_COGNITO_USER_POOL_ID,
@@ -40,13 +32,13 @@ class CognitoService:
             )
             return len(response['Users']) > 0
         except ClientError as e:
-            logger.error(f"Error checking email existence: {e}")
-            raise HTTPException(status_code=500, detail="Error checking email existence")
-    
+            logger.error("Error checking email existence: %s", e)
+            raise HTTPException(status_code=500, detail="Error checking email existence") from e
+
     @staticmethod
     async def sign_up(user):
-        
-        if CognitoService.email_exists(cognito_client, user.email):
+        """Signup a user with Cognito"""
+        if CognitoService.email_exists(user.email):
             raise HTTPException(status_code=409, detail="Email already exists.")
         try:
             response = cognito_client.sign_up(
@@ -60,24 +52,25 @@ class CognitoService:
                     {'Name': 'custom:balance', 'Value': '0'}
                 ]
             )
-            return {"message": "User signed up successfully", "userSub": response['UserSub']}
+            return {"message": "User signed up successfully"}
         except ClientError as e:
             error_code = e.response['Error']['Code']
             if error_code == 'UsernameExistsException':
-                raise HTTPException(status_code=409, detail="User already exists.")
+                raise HTTPException(status_code=409, detail="User already exists.") from e
             elif error_code == 'InvalidPasswordException':
-                raise HTTPException(status_code=400, detail="Invalid password format.")
+                raise HTTPException(status_code=400, detail="Invalid password format.") from e
             elif error_code == 'InvalidParameterException':
-                raise HTTPException(status_code=400, detail="Invalid parameters provided.")
+                raise HTTPException(status_code=400, detail="Invalid parameters provided.") from e
             else:
-                raise HTTPException(status_code=400, detail=str(e))
+                raise HTTPException(status_code=400, detail=str(e)) from e
         except Exception as e:
             # For any other unexpected exceptions
-            logger.error(f"Error: {e}")
-            raise HTTPException(status_code=500, detail="An unexpected error occurred")
+            logger.error("Error: %s", e)
+            raise HTTPException(status_code=500, detail="An unexpected error occurred") from e
 
     @staticmethod
     async def confirm_sign_up(confirm):
+        """Confirm the user signup with the confirmation code"""
         try:
             cognito_client.confirm_sign_up(
                 ClientId=settings.AWS_COGNITO_CLIENT_ID,
@@ -86,11 +79,12 @@ class CognitoService:
             )
             return {"message": "User confirmed successfully"}
         except Exception as e:
-            logger.error(f"Error: {e}")
-            raise HTTPException(status_code=400, detail=str(e))
-    
+            logger.error("Error: %s", e)
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
     @staticmethod
     def parse_user_attributes(user_data):
+        """Parse the user attributes from the Cognito response"""
         parsed_data = {
             "username": user_data["Username"],
         }
@@ -101,8 +95,9 @@ class CognitoService:
 
     @staticmethod
     async def login(username, password):
+        """Login a user with Cognito"""
         try:
-            response = cognito_client.initiate_auth(
+            cognito_response = cognito_client.initiate_auth(
                 ClientId=settings.AWS_COGNITO_CLIENT_ID,
                 AuthFlow='USER_PASSWORD_AUTH',
                 AuthParameters={
@@ -111,177 +106,182 @@ class CognitoService:
                 }
             )
             user_info = cognito_client.get_user(
-                AccessToken=response['AuthenticationResult']['AccessToken']
+                AccessToken=cognito_response['AuthenticationResult']['AccessToken']
             )
-            
             parsed_data = CognitoService.parse_user_attributes(user_info)
-            # return parsed_data
-            tokens =  {
-                "access_token": response['AuthenticationResult']['AccessToken'],
-                "refresh_token": response['AuthenticationResult']['RefreshToken'],
-                "id_token": response['AuthenticationResult']['IdToken'],
-                "expires_in": response['AuthenticationResult']['ExpiresIn'],
+            response_data = {
+                "username": parsed_data['username'],
+                "user_id": parsed_data['sub'],
             }
-            tokens.update(parsed_data)
-            return tokens
-            
+            response = JSONResponse(content=response_data)
+            response.set_cookie(
+                key="access_token",
+                value=cognito_response['AuthenticationResult']['AccessToken'],
+                httponly=True,
+                secure=True,
+                samesite="lax",
+                max_age=3600  # 1 hour
+            )
+            response.set_cookie(
+                key="refresh_token",
+                value=cognito_response['AuthenticationResult']['RefreshToken'],
+                httponly=True,
+                secure=True,
+                samesite="lax",
+                max_age=2592000  # 30 days
+            )
+            return response
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @staticmethod
     async def logout(token):
+        """Logout a user from Cognito"""
         try:
             cognito_client.global_sign_out(AccessToken=token)
-            return {"message": "User logged out successfully"}
+            
+            response = JSONResponse(content={"message": "User logged out successfully"})
+            response.delete_cookie("access_token")
+            response.delete_cookie("refresh_token")
+            return response
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-    
-    @staticmethod      
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @staticmethod
     async def get_jwks():
+        """Get the JWKS from the Cognito endpoint"""
         if time.time() - CognitoService.jwks_cache_timestamp > settings.JWKS_CACHE_TIMEOUT:
             async with httpx.AsyncClient() as client:
                 response = await client.get(settings.KEYS_URL)
                 CognitoService.jwks_cache = response.json()['keys']
             CognitoService.jwks_cache_timestamp = time.time()
         return CognitoService.jwks_cache
-    
+
     @staticmethod
     async def decode_and_validate_token(token: str):
+        """Decode and validate the JWT token"""
         try:
             headers = jwt.get_unverified_headers(token)
             kid = headers['kid']
-            
             jwks = await CognitoService.get_jwks()
             key = next((k for k in jwks if k['kid'] == kid), None)
             if not key:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Key not found")
-            
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                    detail="Key not found")
             public_key = jwk.construct(key)
-            
             payload = jwt.decode(
                 token,
                 public_key.to_pem(),
                 options={'verify_exp': False, "verify_signature": False}
             )
             return TokenPayload(**payload)
-        # except HTTPException as e:
-        #     raise e
-        except JWTError:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    
-    # @staticmethod
-    # async def get_current_user(token_payload: TokenPayload):
-    #     user_info = cognito_client.get_user(
-    #         AccessToken=current_user.access_token
-    #     )
-    #     return token_payload.sub
-    
-    # @staticmethod
-    # async def get_current_user_id(token: str = Depends(OAuth2PasswordBearer(tokenUrl="token"))):
-    #     try:
-    #         token_payload = await CognitoService.decode_and_validate_token(token)
-    #         current_user = await CognitoService.get_current_user(token_payload)
-    #         return User(user_id=current_user)
-    #     except HTTPException as e:
-    #         raise e
-    #     except Exception as e:
-    #         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-    
-    # @staticmethod    
-    # async def get_current_user(token: str = Depends(OAuth2PasswordBearer(tokenUrl="token"))):
-    #     credentials_exception = HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="Could not validate credentials",
-    #         headers={"WWW-Authenticate": "Bearer"},
-    #     )
-    #     try:
-    #         # Verify the token with Cognito
-    #         # logger.info(f"Token: {token}")
-    #         response = cognito_client.get_user(
-    #             AccessToken=token
-    #         )
-    #         username = response['Username']
-    #         return username
-    #     except Exception as e:
-    #         logger.error(f"Error: {e}")
-    #         raise credentials_exception
-        
-    # def get_current_user_id(token: str = Depends(OAuth2PasswordBearer(tokenUrl="token"))):
-    #     credentials_exception = HTTPException(
-    #         status_code=status.HTTP_401_UNAUTHORIZED,
-    #         detail="Could not validate credentials",
-    #         headers={"WWW-Authenticate": "Bearer"},
-    #     )
-    #     try:
-    #         # Verify the token with Cognito
-    #         response = cognito_client.get_user(
-    #             AccessToken=token
-    #         )
-    #         username = response['sub']
-    #         return username
-    #     except Exception:
-    #         raise credentials_exception
-    
+        except JWTError as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token") from e
+
     @staticmethod
-    async def get_current_user(token: str = Depends(oauth2_scheme)):
+    def get_current_user(token: str = Depends(oauth2_scheme)):
+        """Get the current user from the JWT token"""
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
         try:
-            # Decode the token (without verification) to get the 'sub' claim
             payload = jwt.get_unverified_claims(token)
             username: str = payload.get("sub")
             if username is None:
                 raise credentials_exception
-        except JWTError:
-            raise credentials_exception
+        except JWTError as exc:
+            raise credentials_exception from exc
 
         try:
             # Verify the token with Cognito
             response = cognito_client.get_user(AccessToken=token)
             if response['Username'] != username:
                 raise credentials_exception
-            
-            # You can return more user information here if needed
             return {
                 "username": username,
-                "email": next((attr['Value'] for attr in response['UserAttributes'] if attr['Name'] == 'email'), None)
+                "email": next(
+                    (attr['Value'] for attr in response['UserAttributes']
+                        if attr['Name'] == 'email')
+                    , None)
             }
-        except cognito_client.exceptions.NotAuthorizedException:
-            raise credentials_exception
+        except cognito_client.exceptions.NotAuthorizedException as e:
+            raise credentials_exception from e
         except Exception as e:
-            logger.error(f"Error: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
-        
+            logger.error("Error: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error") from e
+
     @staticmethod
-    async def get_current_user_id(token: str = Depends(oauth2_scheme)):
+    def get_current_user_id(token: str):
+        """Get the current user ID from the JWT token"""
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
         try:
-            # Decode the token (without verification) to get the 'sub' claim
             payload = jwt.get_unverified_claims(token)
             username: str = payload.get("sub")
             return username
-            # if username is None:
-            #     raise credentials_exception
-        except JWTError:
-            raise credentials_exception
+        except JWTError as e:
+            raise credentials_exception from e
 
-        # try:
-        #     # Verify the token with Cognito
-        #     response = cognito_client.get_user(AccessToken=token)
-        #     if response['Username'] != username:
-        #         raise credentials_exception
-            
-        #     # You can return more user information here if needed
-        #     return response['sub']
-        # except cognito_client.exceptions.NotAuthorizedException:
-        #     raise credentials_exception
-        # except Exception as e:
-        #     logger.error(f"Error: {e}")
-        #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+    @staticmethod
+    def change_password(token, old_password, new_password):
+        """Change the password of a user"""
+        try:
+            cognito_client.change_password(
+                AccessToken=token,
+                PreviousPassword=old_password,
+                ProposedPassword=new_password
+            )
+            return {"message": "Password changed successfully"}
+        except Exception as e:
+            logger.error("Error: %s", e)
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @staticmethod
+    def forgot_password(username):
+        """Send a password reset code to the user's email"""
+        try:
+            cognito_client.forgot_password(
+                ClientId=settings.AWS_COGNITO_CLIENT_ID,
+                Username=username
+            )
+            return {"message": "Password reset code sent successfully"}
+        except Exception as e:
+            logger.error("Error: %s", e)
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @staticmethod
+    def confirm_forgot_password(username, code, password):
+        """Confirm the password reset with the confirmation code"""
+        try:
+            cognito_client.confirm_forgot_password(
+                ClientId=settings.AWS_COGNITO_CLIENT_ID,
+                Username=username,
+                ConfirmationCode=code,
+                Password=password
+            )
+            return {"message": "Password reset successfully"}
+        except Exception as e:
+            logger.error("Error: %s", e)
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @staticmethod
+    def update_user_attributes(token, attributes):
+        """Update the user attributes in Cognito"""
+        try:
+            cognito_client.update_user_attributes(
+                AccessToken=token,
+                UserAttributes=attributes
+            )
+            return {"message": "User attributes updated successfully"}
+        except Exception as e:
+            logger.error("Error: %s", e)
+            raise HTTPException(status_code=400, detail=str(e)) from e
