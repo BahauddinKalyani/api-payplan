@@ -5,9 +5,8 @@ import httpx
 import boto3
 from botocore.exceptions import ClientError
 from jose import jwt, JWTError, jwk
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordBearer
 from models.auth import TokenPayload
 from config.settings import settings
 logging.basicConfig(level=logging.INFO)
@@ -15,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 cognito_client = boto3.client('cognito-idp', region_name=settings.AWS_REGION)
 boto3.set_stream_logger('botocore', level='DEBUG')
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 class CognitoService:
     """Service class to interact with AWS Cognito."""
@@ -112,6 +110,10 @@ class CognitoService:
             response_data = {
                 "username": parsed_data['username'],
                 "user_id": parsed_data['sub'],
+                "first_name": parsed_data.get('given_name', ''),
+                "last_name": parsed_data.get('family_name', ''),
+                "email": parsed_data.get('email', ''),
+                "age": parsed_data.get('custom:age', '0')
             }
             response = JSONResponse(content=response_data)
             response.set_cookie(
@@ -180,41 +182,6 @@ class CognitoService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token") from e
 
-    @staticmethod
-    def get_current_user(token: str = Depends(oauth2_scheme)):
-        """Get the current user from the JWT token"""
-        credentials_exception = HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        try:
-            payload = jwt.get_unverified_claims(token)
-            username: str = payload.get("sub")
-            if username is None:
-                raise credentials_exception
-        except JWTError as exc:
-            raise credentials_exception from exc
-
-        try:
-            # Verify the token with Cognito
-            response = cognito_client.get_user(AccessToken=token)
-            if response['Username'] != username:
-                raise credentials_exception
-            return {
-                "username": username,
-                "email": next(
-                    (attr['Value'] for attr in response['UserAttributes']
-                        if attr['Name'] == 'email')
-                    , None)
-            }
-        except cognito_client.exceptions.NotAuthorizedException as e:
-            raise credentials_exception from e
-        except Exception as e:
-            logger.error("Error: %s", e)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal server error") from e
 
     @staticmethod
     def get_current_user_id(token: str):
@@ -274,12 +241,17 @@ class CognitoService:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
     @staticmethod
-    def update_user_attributes(token, attributes):
+    def update_user_attributes(username, attributes):
         """Update the user attributes in Cognito"""
         try:
-            cognito_client.update_user_attributes(
-                AccessToken=token,
-                UserAttributes=attributes
+            cognito_client.admin_update_user_attributes(
+                UserPoolId=settings.AWS_COGNITO_USER_POOL_ID,
+                Username=username,
+                UserAttributes=[
+                    {'Name': 'given_name', 'Value': attributes.get('firstName', '')},
+                    {'Name': 'family_name', 'Value': attributes.get('lastName', '')},
+                    {'Name': 'custom:age', 'Value': str(attributes.get('age', '0'))}
+                ]
             )
             return {"message": "User attributes updated successfully"}
         except Exception as e:

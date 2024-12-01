@@ -71,3 +71,8 @@ def get_user_balance(user_id: str):
     """Get the balance for a user"""
     service=MainService(user_id)
     return service.calculate_balances()
+
+@t_router.post("/users/{username}/update-attributes")
+def update_user_attributes(username: str, attributes: dict):
+    """Update the user attributes"""
+    return CognitoService.update_user_attributes(username=username, attributes=attributes)

@@ -69,7 +69,7 @@ async def change_password(token: str, old_password: str, new_password: str):
     """Change password"""
     return await CognitoService.change_password(token, old_password, new_password)
 
-@auth_router.post("/update-user-attributes")
-async def update_user_attributes(token: str, attributes: dict):
-    """Update user attributes"""
-    return await CognitoService.update_user_attributes(token, attributes)
+# @auth_router.post("/update-user-attributes")
+# async def update_user_attributes(attributes: dict, token: str = Depends(cookie_scheme)):
+#     """Update user attributes"""
+#     return await CognitoService.update_user_attributes(token, attributes)

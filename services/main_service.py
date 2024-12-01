@@ -219,7 +219,7 @@ class MainService:
 
             # Prepare the result for this day
             day_result = {
-                'opening_balance': prev_balance + daily_income,
+                'opening_balance': prev_balance,
                 'closing_balance': available_balance,
                 'can_pay': can_pay_all,
                 'paid_transactions': paid_expenses,
