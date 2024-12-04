@@ -47,7 +47,8 @@ class CognitoService:
                     {'Name': 'email', 'Value': user.email},
                     {'Name': 'given_name', 'Value': ' '},
                     {'Name': 'family_name', 'Value': ' '},
-                    {'Name': 'custom:balance', 'Value': '0'}
+                    {'Name': 'custom:balance', 'Value': '0'},
+                    {'Name': 'custom:acceptTnC', 'Value': str(user.privacy_policy)}
                 ]
             )
             return {"message": "User signed up successfully"}
@@ -113,7 +114,8 @@ class CognitoService:
                 "first_name": parsed_data.get('given_name', ''),
                 "last_name": parsed_data.get('family_name', ''),
                 "email": parsed_data.get('email', ''),
-                "age": parsed_data.get('custom:age', '0')
+                "age": parsed_data.get('custom:age', '0'),
+                "onboardingCompleted": parsed_data.get('custom:onboardingCompleted', 'false')
             }
             response = JSONResponse(content=response_data)
             response.set_cookie(
@@ -254,6 +256,25 @@ class CognitoService:
                 ]
             )
             return {"message": "User attributes updated successfully"}
+        except Exception as e:
+            logger.error("Error: %s", e)
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @staticmethod
+    def mark_onboarding_completed(username, attributes):
+        """Update the user attributes in Cognito"""
+        try:
+            cognito_client.admin_update_user_attributes(
+                UserPoolId=settings.AWS_COGNITO_USER_POOL_ID,
+                Username=username,
+                UserAttributes=[
+                    {
+                        'Name': 'custom:onboardingCompleted', 
+                        'Value': str(attributes.get('onboardingCompleted', 'true'))
+                    }
+                ]
+            )
+            return {"message": "onboarding completed marked successfully"}
         except Exception as e:
             logger.error("Error: %s", e)
             raise HTTPException(status_code=400, detail=str(e)) from e

@@ -76,3 +76,8 @@ def get_user_balance(user_id: str):
 def update_user_attributes(username: str, attributes: dict):
     """Update the user attributes"""
     return CognitoService.update_user_attributes(username=username, attributes=attributes)
+
+@t_router.post("/users/{username}/mark-onboarding-completed")
+def mark_onboarding_completed(username: str, attributes: dict):
+    """Update the user attributes"""
+    return CognitoService.mark_onboarding_completed(username=username, attributes=attributes)
