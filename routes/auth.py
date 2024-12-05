@@ -54,15 +54,15 @@ async def read_users_me(token: str):
 # async def refresh_token(token: str):
 #     return await CognitoService.refresh_token(token)
 
-@auth_router.post("/forgot-password")
+@auth_router.post("/{username}/forgot-password")
 async def forgot_password(username: str):
     """Forgot password"""
-    return await CognitoService.forgot_password(username)
+    return CognitoService.forgot_password(username)
 
-@auth_router.post("/confirm-forgot-password")
-async def confirm_forgot_password(username: str, code: str, new_password: str):
+@auth_router.post("/{username}/confirm-forgot-password")
+async def confirm_forgot_password(username: str, attributes: dict):
     """Confirm forgot password"""
-    return await CognitoService.confirm_forgot_password(username, code, new_password)
+    return CognitoService.confirm_forgot_password(username, attributes)
 
 @auth_router.post("/change-password")
 async def change_password(token: str, old_password: str, new_password: str):

@@ -228,14 +228,15 @@ class CognitoService:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
     @staticmethod
-    def confirm_forgot_password(username, code, password):
+    def confirm_forgot_password(username, atributes):
         """Confirm the password reset with the confirmation code"""
+        print(atributes)
         try:
             cognito_client.confirm_forgot_password(
                 ClientId=settings.AWS_COGNITO_CLIENT_ID,
                 Username=username,
-                ConfirmationCode=code,
-                Password=password
+                ConfirmationCode=atributes['code'],
+                Password=atributes['password']
             )
             return {"message": "Password reset successfully"}
         except Exception as e:
