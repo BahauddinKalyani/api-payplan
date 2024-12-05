@@ -81,3 +81,8 @@ def update_user_attributes(username: str, attributes: dict):
 def mark_onboarding_completed(username: str, attributes: dict):
     """Update the user attributes"""
     return CognitoService.mark_onboarding_completed(username=username, attributes=attributes)
+
+@t_router.post("/users/{user_id}/borrow")
+def borrow_money(user_id: str, attributes: dict):
+    """Borrow money"""
+    return transaction_service.borrow_money(user_id, attributes)

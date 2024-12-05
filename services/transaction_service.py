@@ -101,3 +101,34 @@ class TransactionService:
         except ClientError as e:
             print(e.response['Error']['Message'])
             raise
+
+    def borrow_money(self, user_id: str, attributes: dict):
+        """Borrow money"""
+        try:
+
+            transaction_income = TransactionCreate(
+                user_id = user_id,
+                name = 'Borrowed Money',
+                amount = Decimal(str(attributes['amount_borrowed'])),
+                type = 'income',
+                frequency = 'one-time',
+                start_date=None,
+                end_date=None,
+                date_of_transaction = attributes['current_date']
+            )
+            transaction_income = self.create_transaction(transaction_income)
+            transaction_expense = TransactionCreate(
+                user_id = user_id,
+                name='Return Borrowed Money',
+                amount=Decimal(str(attributes['amount_to_be_returned'])),
+                type='expense',
+                frequency='one-time',
+                start_date=None,
+                end_date=None,
+                date_of_transaction = attributes['date_of_return']
+            )
+            transaction_expense = self.create_transaction(transaction_expense)
+            return [transaction_income, transaction_expense]
+        except ClientError as e:
+            print(e.response['Error']['Message'])
+            raise
