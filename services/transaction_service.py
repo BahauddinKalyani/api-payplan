@@ -52,7 +52,7 @@ class TransactionService:
             expression_attribute_values = {}
             expression_attribute_names = {}
             for key, value in transaction.model_dump(exclude_unset=True).items():
-                if key not in ['id', 'user_id', 'type']:
+                if key not in ['id', 'user_id']:
                     if key == 'amount':
                         value = Decimal(str(value))
                     placeholder = f":val_{key}"
