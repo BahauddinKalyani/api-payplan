@@ -67,7 +67,7 @@ class MainService:
         day = min(source_date.day, monthrange(year, month)[1])
         return datetime(year, month, day)
     
-    def add_month_if_possible(self, original_date, current_date):
+    def add_month_if_possible(self, original_date, current_date, return_last_day=False):
         
         next_month = current_date.month + 1
         next_year = current_date.year
@@ -77,8 +77,10 @@ class MainService:
             next_year += 1
             
         last_day_of_next_month = calendar.monthrange(next_year, next_month)[1]
-
-        if original_date.day <= last_day_of_next_month:
+        
+        if return_last_day:
+            new_date = current_date.replace(year=next_year, month=next_month, day=last_day_of_next_month)
+        elif original_date.day <= last_day_of_next_month:
             new_date = current_date.replace(year=next_year, month=next_month, day=original_date.day)
         else:
             new_date = current_date.replace(year=next_year, month=next_month, day=last_day_of_next_month)
@@ -94,6 +96,13 @@ class MainService:
             while current_date <= end_date:
                 yield current_date
                 current_date += timedelta(days=1)
+                
+    def last_day_of_month(self, input_date):
+        """Return the last day of the month for the specified date."""
+        year = input_date.year
+        month = input_date.month
+        last_day = calendar.monthrange(year, month)[1]
+        return datetime(year, month, last_day)
 
     def calculate_recurring_dates(self, transactions, recurring_transactions):
         """Calculate recurring income transactions for the next 7 months."""
@@ -154,7 +163,11 @@ class MainService:
 
             elif transaction.frequency == 'semi-monthly':
                 first_trans_date = self.parse_date(transaction.date_of_transaction)
-                second_trans_date = self.parse_date(transaction.date_of_second_transaction)
+                
+                if(transaction.last_day_of_month):
+                    second_trans_date = self.last_day_of_month(start_date)
+                else:
+                    second_trans_date = self.parse_date(transaction.date_of_second_transaction)
                 
                 while first_trans_date <= end_window or second_trans_date <= end_window:
                     if first_trans_date >= start_window and first_trans_date <= end_date:
@@ -166,20 +179,29 @@ class MainService:
                         recurring_transactions[second_trans_date].append(transaction)
                         
                     first_trans_date = self.add_months(first_trans_date, 1)
-                    second_trans_date = self.add_months(second_trans_date, 1)
+                    if transaction.last_day_of_month:
+                        second_trans_date = self.add_month_if_possible(second_trans_date, second_trans_date, True)
+                    else:
+                        second_trans_date = self.add_months(second_trans_date, 1)
 
             elif transaction.frequency == 'monthly':
                 trans_date = self.parse_date(transaction.date_of_transaction)
                 orignal_date = self.parse_date(transaction.date_of_transaction)
                 
+                if(transaction.last_day_of_month):
+                    trans_date = self.last_day_of_month(start_date)
+                else:
+                    trans_date = self.parse_date(transaction.date_of_transaction)
+                    
                 while trans_date <= end_window:
                     if trans_date >= start_window and trans_date <= end_date:
                         transaction_dates[trans_date] = transaction_dates.get(trans_date, Decimal(0)) + transaction.amount
                         recurring_transactions[trans_date].append(transaction)
                         
-                    # Move to the next month for monthly transactions
-                    trans_date = self.add_month_if_possible(orignal_date, trans_date)
-                    # trans_date = self.add_months(trans_date, 1)
+                    if transaction.last_day_of_month:
+                        trans_date = self.add_month_if_possible(orignal_date, trans_date, True)
+                    else:
+                        trans_date = self.add_month_if_possible(orignal_date, trans_date)
 
         return dict(sorted(transaction_dates.items())), recurring_transactions
     
