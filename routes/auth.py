@@ -64,8 +64,8 @@ async def confirm_forgot_password(username: str, attributes: dict):
     """Confirm forgot password"""
     return CognitoService.confirm_forgot_password(username, attributes)
 
-@auth_router.post("/change-password")
-async def change_password(token: str, old_password: str, new_password: str):
+@auth_router.post("/{username}/change-password")
+async def change_password(attributes: dict, username: str, token: str = Depends(cookie_scheme)):
     """Change password"""
-    return await CognitoService.change_password(token, old_password, new_password)
+    return CognitoService.change_password(token, username, attributes)
 

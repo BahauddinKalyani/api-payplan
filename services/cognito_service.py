@@ -115,7 +115,8 @@ class CognitoService:
                 "last_name": parsed_data.get('family_name', ''),
                 "email": parsed_data.get('email', ''),
                 "age": parsed_data.get('custom:age', '0'),
-                "onboardingCompleted": parsed_data.get('custom:onboardingCompleted', 'false')
+                "onboardingCompleted": parsed_data.get('custom:onboardingCompleted', 'false'),
+                "avatar": parsed_data.get('custom:avatar', '')
             }
             response = JSONResponse(content=response_data)
             response.set_cookie(
@@ -201,15 +202,21 @@ class CognitoService:
             raise credentials_exception from e
 
     @staticmethod
-    def change_password(token, old_password, new_password):
+    def change_password(token, username, attributes):
         """Change the password of a user"""
         try:
             cognito_client.change_password(
                 AccessToken=token,
-                PreviousPassword=old_password,
-                ProposedPassword=new_password
+                PreviousPassword=attributes.get('currentPassword'),
+                ProposedPassword=attributes.get('newPassword')
             )
             return {"message": "Password changed successfully"}
+        except cognito_client.exceptions.NotAuthorizedException as exc:
+            raise HTTPException(status_code=401, detail="Incorrect current password") from exc
+        except cognito_client.exceptions.InvalidPasswordException as exc:
+            raise HTTPException(status_code=400, detail="Invalid new password format") from exc
+        except cognito_client.exceptions.LimitExceededException as exc:
+            raise HTTPException(status_code=400, detail="Password change limit exceeded") from exc
         except Exception as e:
             logger.error("Error: %s", e)
             raise HTTPException(status_code=400, detail=str(e)) from e
@@ -253,10 +260,17 @@ class CognitoService:
                 UserAttributes=[
                     {'Name': 'given_name', 'Value': attributes.get('firstName', '')},
                     {'Name': 'family_name', 'Value': attributes.get('lastName', '')},
-                    {'Name': 'custom:age', 'Value': str(attributes.get('age', '0'))}
+                    {'Name': 'custom:age', 'Value': str(attributes.get('age', '0'))},
+                    {'Name': 'custom:avatar', 'Value': str(attributes.get('avatar', ''))}
                 ]
             )
             return {"message": "User attributes updated successfully"}
+        except cognito_client.exceptions.UserNotFoundException as exc:
+            raise HTTPException(status_code=404, detail="User not found") from exc
+        except cognito_client.exceptions.InvalidParameterException as exc:
+            raise HTTPException(status_code=400, detail="Invalid parameters provided") from exc
+        except cognito_client.exceptions.LimitExceededException as exc:
+            raise HTTPException(status_code=400, detail="Attribute limit exceeded") from exc
         except Exception as e:
             logger.error("Error: %s", e)
             raise HTTPException(status_code=400, detail=str(e)) from e
