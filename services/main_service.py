@@ -113,6 +113,10 @@ class MainService:
         end_window = self.parse_date(end_window.strftime("%m-%d-%Y"))
         logger.info(f"Start window: {start_window}, End window: {end_window}")
         transaction_dates = {}
+        
+        if len(transactions) > 0 and transactions[0].type == 'expense':
+            transactions = sorted(transactions, key=lambda x: x.amount, reverse=True)  
+            
 
         for transaction in transactions:
             # if transaction.type != 'income':
