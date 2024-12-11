@@ -68,4 +68,3 @@ async def confirm_forgot_password(username: str, attributes: dict):
 async def change_password(attributes: dict, username: str, token: str = Depends(cookie_scheme)):
     """Change password"""
     return CognitoService.change_password(token, username, attributes)
-
