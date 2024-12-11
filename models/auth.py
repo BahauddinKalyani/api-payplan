@@ -8,6 +8,7 @@ class SignUpModel(BaseModel):
     email: str
     password: str
     balance: Optional[int] = None
+    privacy_policy: Optional[str] = 'false'
 
 class ConfirmSignUpModel(BaseModel):
     username: str

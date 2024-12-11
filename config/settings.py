@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     AWS_COGNITO_USER_POOL_ID: str
     AWS_COGNITO_CLIENT_ID: str
     JWKS_CACHE_TIMEOUT: int = 3600
+    ALLOWED_ORIGINS: str
     
     @property
     def KEYS_URL(self):
