@@ -96,6 +96,8 @@ class CognitoService:
     async def login(username, password):
         """Login a user with Cognito"""
         try:
+            from config.settings import settings
+            allowed_origins = settings.ALLOWED_ORIGINS.split(",")
             cognito_response = cognito_client.initiate_auth(
                 ClientId=settings.AWS_COGNITO_CLIENT_ID,
                 AuthFlow='USER_PASSWORD_AUTH',
@@ -125,6 +127,7 @@ class CognitoService:
                 httponly=True,
                 secure=True,
                 samesite="lax",
+                domain=allowed_origins,
                 max_age=3600  # 1 hour
             )
             response.set_cookie(
@@ -133,6 +136,7 @@ class CognitoService:
                 httponly=True,
                 secure=True,
                 samesite="lax",
+                domain=allowed_origins,
                 max_age=2592000  # 30 days
             )
             return response
